@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building, CreditCard, Heart, LogOut, Package, User, AlertCircle, Settings, Shield, Bell, MapPin, RefreshCw, ChevronRight, Edit } from "lucide-react";
+import { Building, CreditCard, Heart, LogOut, Package, User, AlertCircle, Settings, Shield, Bell, MapPin, RefreshCw, ChevronRight, Edit, LifeBuoy } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import GlassCard from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileRow } from "@/integrations/supabase/types.service";
 import EditProfileModal from "@/components/account/EditProfileModal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,16 +12,78 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { getOrCreateProfile } from "@/integrations/supabase/profiles.service";
+import { repairUserAccount } from "@/integrations/supabase/repair.service";
+import { useToast } from "@/hooks/use-toast";
 
 const Account = () => {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRepairing, setIsRepairing] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [showProfileAlert, setShowProfileAlert] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   
+  const repairProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setIsRepairing(true);
+      
+      toast({
+        title: "Repairing account...",
+        description: "Please wait while we fix your profile",
+      });
+      
+      const result = await repairUserAccount(user.id);
+      
+      if (result.profile) {
+        setProfile(result.profile);
+        
+        // Update missing fields
+        const missing: string[] = [];
+        if (!result.profile.name) missing.push("name");
+        if (!result.profile.phone_number) missing.push("phone number");
+        
+        setMissingFields(missing);
+        setShowProfileAlert(missing.length > 0);
+        
+        // Calculate profile completion percentage
+        let completedFields = 0;
+        const totalFields = 2; // name and phone
+        if (result.profile.name) completedFields++;
+        if (result.profile.phone_number) completedFields++;
+        
+        setCompletionPercentage(Math.round((completedFields / totalFields) * 100));
+        
+        toast({
+          title: "Repair complete",
+          description: result.profileCreated 
+            ? "Your profile has been created successfully" 
+            : "Your profile was already set up correctly",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Repair failed",
+          description: "We couldn't fix your profile. Please try again later.",
+        });
+      }
+    } catch (error) {
+      console.error("Error repairing profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Repair failed",
+        description: "An error occurred while trying to fix your profile.",
+      });
+    } finally {
+      setIsRepairing(false);
+    }
+  };
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
@@ -30,20 +91,19 @@ const Account = () => {
       try {
         setIsLoading(true);
         
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+        // Use getOrCreateProfile to ensure a profile exists
+        const profileData = await getOrCreateProfile(user.id);
         
-        if (error) throw error;
+        if (!profileData) {
+          throw new Error('Failed to fetch or create profile');
+        }
         
-        setProfile(data);
+        setProfile(profileData);
         
         // Check which fields are missing
         const missing: string[] = [];
-        if (!data.name) missing.push("name");
-        if (!data.phone_number) missing.push("phone number");
+        if (!profileData.name) missing.push("name");
+        if (!profileData.phone_number) missing.push("phone number");
         
         setMissingFields(missing);
         setShowProfileAlert(missing.length > 0);
@@ -51,8 +111,8 @@ const Account = () => {
         // Calculate profile completion percentage
         let completedFields = 0;
         const totalFields = 2; // name and phone
-        if (data.name) completedFields++;
-        if (data.phone_number) completedFields++;
+        if (profileData.name) completedFields++;
+        if (profileData.phone_number) completedFields++;
         
         setCompletionPercentage(Math.round((completedFields / totalFields) * 100));
       } catch (error) {
@@ -65,40 +125,6 @@ const Account = () => {
     fetchUserProfile();
   }, [user]);
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      
-      if (error) throw error;
-      
-      setProfile(data);
-      
-      // Update missing fields after profile refresh
-      const missing: string[] = [];
-      if (!data.name) missing.push("name");
-      if (!data.phone_number) missing.push("phone number");
-      
-      setMissingFields(missing);
-      setShowProfileAlert(missing.length > 0);
-
-      // Calculate profile completion percentage
-      let completedFields = 0;
-      const totalFields = 2; // name and phone
-      if (data.name) completedFields++;
-      if (data.phone_number) completedFields++;
-      
-      setCompletionPercentage(Math.round((completedFields / totalFields) * 100));
-    } catch (error) {
-      console.error("Error refreshing user profile:", error);
-    }
-  };
-  
   if (!user) {
     return (
       <Layout>
@@ -168,6 +194,20 @@ const Account = () => {
                 <Edit className="h-3.5 w-3.5 mr-1.5" />
                 Edit Profile
               </Button>
+              
+              {!profile && (
+                <Button 
+                  variant="outline" 
+                  onClick={repairProfile} 
+                  size="sm" 
+                  className="text-sm text-yellow-600 border-yellow-200"
+                  disabled={isRepairing}
+                >
+                  <LifeBuoy className="h-3.5 w-3.5 mr-1.5" />
+                  {isRepairing ? "Repairing..." : "Repair Account"}
+                </Button>
+              )}
+              
               <Button variant="outline" onClick={() => signOut()} className="text-destructive text-sm" size="sm">
                 <LogOut className="h-3.5 w-3.5 mr-1.5" />
                 Sign out
@@ -398,7 +438,7 @@ const Account = () => {
         open={isEditProfileOpen}
         onOpenChange={setIsEditProfileOpen}
         profile={profile}
-        onProfileUpdated={refreshProfile}
+        onProfileUpdated={repairProfile}
       />
     </Layout>
   );

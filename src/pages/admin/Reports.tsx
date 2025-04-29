@@ -72,7 +72,7 @@ import {
   customerData as mockCustomerData, 
   COLORS 
 } from "@/data/reportsData";
-import { getAllReportData, getProductPerformanceData, getCategoryData, getSalesSummary } from "@/integrations/supabase/reports.service";
+import { getAllReportData, getProductPerformanceData, getCategoryData, getSalesSummary, getAllOrdersProductData } from "@/integrations/supabase/reports.service";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
@@ -96,12 +96,14 @@ const ReportsPage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isProductDataLoading, setIsProductDataLoading] = useState(false);
+  const [isAllOrdersProductDataLoading, setIsAllOrdersProductDataLoading] = useState(false);
   const [productSortBy, setProductSortBy] = useState<"revenue" | "units">("revenue");
   const { toast } = useToast();
   
   // Add state for all data
   const [salesData, setSalesData] = useState(mockSalesData);
   const [productPerformanceData, setProductPerformanceData] = useState<TopProduct[]>([]);
+  const [allOrdersProductData, setAllOrdersProductData] = useState<TopProduct[]>([]);
   const [categoryData, setCategoryData] = useState(mockCategoryData);
   const [customerData, setCustomerData] = useState(mockCustomerData);
   const [customerSegments, setCustomerSegments] = useState({
@@ -122,7 +124,9 @@ const ReportsPage = () => {
     averageOrderValue: 0,
     aovPercentChange: '0.0',
     conversionRate: 0,
-    conversionPercentChange: 0
+    conversionPercentChange: 0,
+    totalUnits: 0,
+    unitsPercentChange: '0.0'
   });
   const [customerInsights, setCustomerInsights] = useState({
     totalCustomers: 0,
@@ -206,27 +210,27 @@ const ReportsPage = () => {
           ...prev,
           ...salesSummaryData
         }));
-        
-        toast({
-          title: "Product data updated",
-          description: `Loaded ${productData.length} products with revenue data from completed/delivered orders.`
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "No product data found",
-          description: "Unable to find product revenue data for completed/delivered orders."
-        });
       }
     } catch (error) {
       console.error("Error fetching product performance data:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load product data",
-        description: "There was an error retrieving real product data."
-      });
     } finally {
       setIsProductDataLoading(false);
+    }
+  };
+
+  // Function to fetch all orders product data
+  const fetchAllOrdersProductData = async () => {
+    setIsAllOrdersProductDataLoading(true);
+    try {
+      const allProductData = await getAllOrdersProductData();
+      
+      if (allProductData.length > 0) {
+        setAllOrdersProductData(allProductData);
+      }
+    } catch (error) {
+      console.error("Error fetching all orders product data:", error);
+    } finally {
+      setIsAllOrdersProductDataLoading(false);
     }
   };
 
@@ -234,6 +238,7 @@ const ReportsPage = () => {
   const handleTabChange = (value: string) => {
     if (value === 'products') {
       fetchRealProductData();
+      fetchAllOrdersProductData();
     }
   };
 
@@ -850,7 +855,7 @@ const ReportsPage = () => {
                         <span className={`font-medium ${parseFloat(salesSummary.aovPercentChange) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {parseFloat(salesSummary.aovPercentChange) >= 0 ? '+' : ''}{salesSummary.aovPercentChange}%
                         </span>
-                        <span className="ml-1 text-muted-foreground">vs last period</span>
+                        <span className="ml-1 text-muted-foreground">from delivered orders only</span>
                       </div>
                     </CardContent>
                   </GlassCard>
@@ -895,7 +900,7 @@ const ReportsPage = () => {
                           Product Performance
                         </CardTitle>
                     <CardDescription>
-                          Top 10 products by revenue from completed and delivered orders
+                          Top 10 products by revenue from delivered orders only
                     </CardDescription>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -1017,198 +1022,91 @@ const ReportsPage = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex flex-col items-end">
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-semibold">{product.sales}</span>
-                                      <span className="text-xs text-muted-foreground">units</span>
-                                    </div>
-                                    {product.price && (
-                                      <span className="text-xs font-medium">${product.price.toFixed(2)}</span>
-                                    )}
+                                  <div className="text-right">
+                                    <div className="font-medium">${((product.price || 0) * product.sales).toLocaleString()}</div>
+                                    <div className="text-xs text-muted-foreground">{product.sales} units</div>
                                   </div>
                                 </div>
-                                
-                                <div className="flex items-center gap-3">
-                                  <Progress value={(product.sales / maxSales) * 100} className="h-2" />
-                                  <span className={cn(
-                                    "text-xs flex items-center font-medium",
-                                    product.percentChange >= 0 
-                                      ? "text-green-600 dark:text-green-400" 
-                                      : "text-red-600 dark:text-red-400"
-                                  )}>
-                                    {product.percentChange >= 0 
-                                      ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> 
-                                      : <ArrowDownRight className="h-3 w-3 mr-0.5" />
-                                    }
-                                    {Math.abs(product.percentChange)}%
-                                  </span>
-                                </div>
+                                <Progress
+                                  value={(product.sales / maxSales) * 100}
+                                  className="h-2"
+                                />
                               </div>
                             ))}
+                          <div className="text-xs text-muted-foreground text-center mt-2">
+                            * Data from delivered orders only
+                          </div>
                         </div>
                       </>
                     )}
                   </ModernCard>
-                  
-                  <GlassCard className="overflow-hidden h-full">
-                    <CardHeader className="p-6 pb-3">
-                      <CardTitle className="text-lg font-bold flex items-center">
-                        <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-                        Product Insights
-                      </CardTitle>
-                      <CardDescription>
-                        Key metrics from completed and delivered orders
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-3">
-                      {isProductDataLoading ? (
-                        <div className="h-[240px] flex items-center justify-center">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+
+                  <ModernCard className="h-full">
+                    {isAllOrdersProductDataLoading ? (
+                      <div className="h-[240px] flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-4">
+                          <ShoppingBag className="h-5 w-5 text-blue-500" />
+                          <h3 className="font-medium text-lg">Top Selling Products (All Orders)</h3>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                          {(() => {
-                            // Process data once to avoid re-sorting
-                            if (productPerformanceData.length === 0) {
+                        
+                        <div className="space-y-6">
+                          {allOrdersProductData
+                            .map((product, index) => ({
+                              ...product,
+                              uniqueId: `all-${product.id}-${index}` // Add a uniqueId property for key usage
+                            }))
+                            .sort((a, b) => (productSortBy === "revenue" ? 
+                              ((b.price || 0) * b.sales) - ((a.price || 0) * a.sales) : 
+                              b.sales - a.sales))
+                            .slice(0, 5)
+                            .map((product) => {
+                              // Calculate max sales for percentage calculations
+                              const maxAllOrdersSales = Math.max(...(allOrdersProductData.map(p => p.sales) || [1]));
+                              
                               return (
-                                <>
-                                  <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-sm font-medium text-muted-foreground">
-                                          Top Revenue Generator
-                                        </p>
-                                        <p className="text-lg font-bold mt-1">N/A</p>
-                                      </div>
-                                      <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium">
-                                        $0
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-sm font-medium text-muted-foreground">
-                                          Most Units Sold
-                                        </p>
-                                        <p className="text-lg font-bold mt-1">N/A</p>
-                                      </div>
-                                      <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
-                                        0 units
+                                <div key={product.uniqueId} className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-start gap-3">
+                                      {product.image ? (
+                                        <div className="h-10 w-10 rounded-md overflow-hidden border flex-shrink-0 bg-muted">
+                                          <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                        </div>
+                                      ) : (
+                                        <div className="h-10 w-10 rounded-md flex-shrink-0 bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                          <span className="font-semibold text-xs text-blue-600 dark:text-blue-400">{product.name.substring(0, 2).toUpperCase()}</span>
+                                        </div>
+                                      )}
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{product.name}</span>
+                                        {product.category && (
+                                          <span className="text-xs text-muted-foreground">{product.category}</span>
+                                        )}
                                       </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-sm font-medium text-muted-foreground">
-                                          Average Revenue Per Product
-                                        </p>
-                                        <p className="text-lg font-bold mt-1">$0</p>
-                                      </div>
-                                      <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-sm font-medium">
-                                        Average
-                                      </div>
+                                    <div className="text-right">
+                                      <div className="font-medium">${((product.price || 0) * product.sales).toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">{product.sales} units</div>
                                     </div>
                                   </div>
-                                  
-                                  <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-sm font-medium text-muted-foreground">
-                                          Total Product Count
-                                        </p>
-                                        <p className="text-lg font-bold mt-1">0 products</p>
-                                      </div>
-                                      <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full text-sm font-medium">
-                                        With Sales
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
+                                  <Progress
+                                    value={(product.sales / maxAllOrdersSales) * 100}
+                                    className="h-2 bg-blue-100 dark:bg-blue-900/30"
+                                    indicatorClassName="bg-blue-600 dark:bg-blue-400"
+                                  />
+                                </div>
                               );
-                            }
-                            
-                            // Sort by revenue
-                            const byRevenue = [...productPerformanceData].sort((a, b) => 
-                              ((b.price || 0) * b.sales) - ((a.price || 0) * a.sales)
-                            );
-                            
-                            // Sort by units sold
-                            const byUnits = [...productPerformanceData].sort((a, b) => b.sales - a.sales);
-                            
-                            // Calculate average revenue
-                            const totalRevenue = productPerformanceData.reduce((sum, p) => 
-                              sum + ((p.price || 0) * p.sales), 0
-                            );
-                            const avgRevenue = Math.round(totalRevenue / productPerformanceData.length);
-                            
-                            return (
-                              <>
-                                <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-sm font-medium text-muted-foreground">
-                                        Top Revenue Generator
-                                      </p>
-                                      <p className="text-lg font-bold mt-1">{byRevenue[0].name}</p>
-                                    </div>
-                                    <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium">
-                                      ${((byRevenue[0].price || 0) * byRevenue[0].sales).toLocaleString()}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-sm font-medium text-muted-foreground">
-                                        Most Units Sold
-                                      </p>
-                                      <p className="text-lg font-bold mt-1">{byUnits[0].name}</p>
-                                    </div>
-                                    <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
-                                      {byUnits[0].sales} units
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-sm font-medium text-muted-foreground">
-                                        Average Revenue Per Product
-                                      </p>
-                                      <p className="text-lg font-bold mt-1">${avgRevenue.toLocaleString()}</p>
-                                    </div>
-                                    <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-sm font-medium">
-                                      Average
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className="bg-black/5 dark:bg-white/5 rounded-lg p-4">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-sm font-medium text-muted-foreground">
-                                        Total Product Count
-                                      </p>
-                                      <p className="text-lg font-bold mt-1">{productPerformanceData.length} products</p>
-                                    </div>
-                                    <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full text-sm font-medium">
-                                      With Sales
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            );
-                          })()}
+                            })}
+                          <div className="text-xs text-muted-foreground text-center mt-2">
+                            * Data includes all orders regardless of status
+                          </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </GlassCard>
+                      </>
+                    )}
+                  </ModernCard>
                 </div>
               </TabsContent>
               

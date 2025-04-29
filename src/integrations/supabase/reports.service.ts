@@ -62,10 +62,17 @@ export async function getMonthlySalesData() {
  */
 export async function getProductPerformanceData(limit = 10) {
   try {
-    // First get order items with quantity and product ID - exactly like in Dashboard
+    // First get order items with quantity and product ID from delivered orders only
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
-      .select('product_id, quantity');
+      .select(`
+        product_id, 
+        quantity, 
+        orders!order_items_order_id_fkey(
+          id, 
+          status
+        )
+      `);
     
     if (orderItemsError) throw orderItemsError;
     
@@ -73,10 +80,11 @@ export async function getProductPerformanceData(limit = 10) {
       return [];
     }
 
-    // Calculate total sales per product
+    // Calculate total sales per product - ONLY from delivered orders
     const productSalesMap: Record<string, number> = {};
     orderItemsData.forEach(item => {
-      if (item.product_id) {
+      // Only count items from delivered orders
+      if (item.product_id && item.orders && item.orders.status === 'delivered') {
         const productId = String(item.product_id);
         productSalesMap[productId] = (productSalesMap[productId] || 0) + (item.quantity || 0);
       }
@@ -121,13 +129,6 @@ export async function getProductPerformanceData(limit = 10) {
     }))
     .sort((a, b) => b.sales - a.sales)
     .slice(0, limit);
-    
-    // Debug log
-    console.log('Product Performance Data:', 
-      productsWithSales.map((p, i) => 
-        `${i+1}. ${p.name}: ${p.sales} units, $${(p.price || 0) * p.sales}`
-      ).join('\n')
-    );
     
     return productsWithSales;
   } catch (error) {
@@ -285,71 +286,94 @@ export async function getCustomerAcquisitionData() {
 }
 
 /**
- * Get detailed sales summary data
+ * Get sales summary data for dashboard and reports
  */
 export async function getSalesSummary() {
   try {
-    // Get current month's orders - only completed and delivered
-    const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-    const { data: currentMonthOrders, error: currentError } = await supabase
+    // Get current month orders
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const previousMonthStart = startOfMonth(subMonths(today, 1));
+    const previousMonthEnd = endOfMonth(subMonths(today, 1));
+    
+    const startDate = format(currentMonthStart, "yyyy-MM-dd");
+    const prevMonthStart = format(previousMonthStart, "yyyy-MM-dd");
+    const prevMonthEnd = format(previousMonthEnd, "yyyy-MM-dd");
+    
+    // Get all orders from current and previous month for comparison
+    const { data: currentMonthOrders, error: currentMonthError } = await supabase
       .from('orders')
-      .select('total, created_at, status')
-      .gte('created_at', currentMonthStart)
-      .in('status', ['completed', 'delivered']);
+      .select('id, total, status, items:order_items(quantity)')
+      .gte('created_at', startDate);
     
-    if (currentError) throw currentError;
+    if (currentMonthError) throw currentMonthError;
     
-    // Get previous month's orders - only completed and delivered
-    const previousMonthStart = format(startOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
-    const previousMonthEnd = format(endOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
-    const { data: previousMonthOrders, error: previousError } = await supabase
+    const { data: previousMonthOrders, error: previousMonthError } = await supabase
       .from('orders')
-      .select('total, created_at, status')
-      .gte('created_at', previousMonthStart)
-      .lte('created_at', previousMonthEnd)
-      .in('status', ['completed', 'delivered']);
+      .select('id, total, status, items:order_items(quantity)')
+      .gte('created_at', prevMonthStart)
+      .lte('created_at', prevMonthEnd);
     
-    if (previousError) throw previousError;
+    if (previousMonthError) throw previousMonthError;
     
-    // Calculate total sales
-    const currentMonthSales = currentMonthOrders?.reduce(
-      (sum, order) => sum + parseFloat(order.total.toString()), 0
-    ) || 0;
+    // Calculate total sales, but only count delivered orders
+    const currentMonthSales = currentMonthOrders
+      ?.filter(order => order.status === 'delivered')
+      .reduce((sum, order) => sum + parseFloat(order.total.toString()), 0) || 0;
     
-    const previousMonthSales = previousMonthOrders?.reduce(
-      (sum, order) => sum + parseFloat(order.total.toString()), 0
-    ) || 0;
+    const previousMonthSales = previousMonthOrders
+      ?.filter(order => order.status === 'delivered')
+      .reduce((sum, order) => sum + parseFloat(order.total.toString()), 0) || 0;
     
-    // Calculate percentage change
-    const salesPercentChange = previousMonthSales === 0 
-      ? 100 
-      : ((currentMonthSales - previousMonthSales) / previousMonthSales) * 100;
+    // Calculate total units sold - only from delivered orders
+    const currentMonthUnits = currentMonthOrders
+      ?.filter(order => order.status === 'delivered')
+      .reduce((sum, order) => {
+        const orderQuantity = order.items?.reduce((qty, item) => qty + (item.quantity || 0), 0) || 0;
+        return sum + orderQuantity;
+      }, 0) || 0;
     
-    // Calculate average order value
-    const currentAOV = currentMonthOrders?.length === 0 
-      ? 0 
-      : currentMonthSales / currentMonthOrders?.length;
+    const previousMonthUnits = previousMonthOrders
+      ?.filter(order => order.status === 'delivered')
+      .reduce((sum, order) => {
+        const orderQuantity = order.items?.reduce((qty, item) => qty + (item.quantity || 0), 0) || 0;
+        return sum + orderQuantity;
+      }, 0) || 0;
     
-    const previousAOV = previousMonthOrders?.length === 0 
-      ? 0 
-      : previousMonthSales / previousMonthOrders?.length;
+    // Calculate AOV - Average Order Value (only for delivered orders)
+    const currentDeliveredOrders = currentMonthOrders?.filter(order => order.status === 'delivered') || [];
+    const previousDeliveredOrders = previousMonthOrders?.filter(order => order.status === 'delivered') || [];
     
-    const aovPercentChange = previousAOV === 0 
-      ? 100 
-      : ((currentAOV - previousAOV) / previousAOV) * 100;
+    const currentAOV = currentDeliveredOrders.length > 0 
+      ? currentMonthSales / currentDeliveredOrders.length 
+      : 0;
     
-    // Calculate conversion rate (this is a placeholder - in real implementation you'd track sessions)
-    // For now calculating assuming a fixed 5% conversion from previous month, with some variation
-    const conversionRate = 5.2;
-    const conversionPercentChange = 0.7;
+    const previousAOV = previousDeliveredOrders.length > 0 
+      ? previousMonthSales / previousDeliveredOrders.length 
+      : 0;
+    
+    // Calculate percent changes
+    const salesPercentChange = previousMonthSales > 0 
+      ? ((currentMonthSales - previousMonthSales) / previousMonthSales * 100).toFixed(1)
+      : '0.0';
+    
+    const aovPercentChange = previousAOV > 0 
+      ? ((currentAOV - previousAOV) / previousAOV * 100).toFixed(1)
+      : '0.0';
+    
+    const unitsPercentChange = previousMonthUnits > 0
+      ? ((currentMonthUnits - previousMonthUnits) / previousMonthUnits * 100).toFixed(1)
+      : '0.0';
     
     return {
-      totalSales: Math.round(currentMonthSales),
-      salesPercentChange: salesPercentChange.toFixed(1),
+      totalSales: Math.round(currentMonthSales * 100) / 100,
+      salesPercentChange,
       averageOrderValue: Math.round(currentAOV * 100) / 100,
-      aovPercentChange: aovPercentChange.toFixed(1),
-      conversionRate,
-      conversionPercentChange
+      aovPercentChange,
+      conversionRate: 2.8, // Placeholder
+      conversionPercentChange: 0.5, // Placeholder
+      totalUnits: currentMonthUnits,
+      unitsPercentChange
     };
   } catch (error) {
     console.error('Error getting sales summary:', error);
@@ -359,7 +383,9 @@ export async function getSalesSummary() {
       averageOrderValue: 0,
       aovPercentChange: '0.0',
       conversionRate: 0,
-      conversionPercentChange: 0
+      conversionPercentChange: 0,
+      totalUnits: 0,
+      unitsPercentChange: '0.0'
     };
   }
 }
@@ -557,6 +583,86 @@ export async function getCustomerSegments() {
         revenuePercentage: 42
       }
     };
+  }
+}
+
+/**
+ * Get product performance data from ALL orders regardless of status
+ */
+export async function getAllOrdersProductData(limit = 10) {
+  try {
+    // First get order items with quantity and product ID from ALL orders
+    const { data: orderItemsData, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select(`
+        product_id, 
+        quantity, 
+        orders!order_items_order_id_fkey(
+          id, 
+          status
+        )
+      `);
+    
+    if (orderItemsError) throw orderItemsError;
+    
+    if (!orderItemsData || orderItemsData.length === 0) {
+      return [];
+    }
+
+    // Calculate total sales per product - from ALL orders
+    const productSalesMap: Record<string, number> = {};
+    orderItemsData.forEach(item => {
+      // Count items from all orders regardless of status
+      if (item.product_id) {
+        const productId = String(item.product_id);
+        productSalesMap[productId] = (productSalesMap[productId] || 0) + (item.quantity || 0);
+      }
+    });
+    
+    // Get product IDs with sales - ensure they're strings for UUID compatibility
+    const productIds = Object.keys(productSalesMap).filter(id => id && id !== "null" && id !== "undefined");
+    
+    if (productIds.length === 0) {
+      return [];
+    }
+    
+    // Fetch product details for these products
+    const { data: productsData, error: productsError } = await supabase
+      .from('products')
+      .select(`
+        id, 
+        name, 
+        price, 
+        image,
+        categories:category_id (name)
+      `)
+      .in('id', productIds);
+    
+    if (productsError) throw productsError;
+    
+    if (!productsData || productsData.length === 0) {
+      return [];
+    }
+    
+    // Combine sales data with product details
+    const productsWithSales = productsData.map(product => ({
+      id: Number(product.id) || 0, // Ensure it's a number to match TopProduct interface
+      name: product.name,
+      sales: productSalesMap[String(product.id)] || 0,
+      percentChange: Math.random() > 0.5 ? 
+        Math.round(Math.random() * 15 * 10) / 10 : 
+        -Math.round(Math.random() * 10 * 10) / 10,
+      image: product.image,
+      price: product.price,
+      category: product.categories?.name || 'Uncategorized'
+    }))
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, limit);
+    
+    return productsWithSales;
+  } catch (error) {
+    console.error('Error getting all orders product performance data:', error);
+    return [];
   }
 }
 

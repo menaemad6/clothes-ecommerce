@@ -1,9 +1,10 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { getOrCreateUserRole } from "@/integrations/supabase/roles.service";
+import { getOrCreateProfile } from "@/integrations/supabase/profiles.service";
 
 export type UserRole = "user" | "admin" | "super_admin";
 
@@ -71,12 +72,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_highest_role', {
-        user_id: userId
-      });
+      // Use getOrCreateUserRole to ensure a role exists
+      const role = await getOrCreateUserRole(userId);
       
-      if (error) throw error;
-      setUserRole(data as UserRole);
+      if (role) {
+        setUserRole(role);
+      } else {
+        // Fall back to the default role if creation failed
+        console.error("Error fetching user role, using default");
+        setUserRole("user");
+      }
     } catch (error) {
       console.error("Error fetching user role:", error);
       setUserRole("user"); // Default to user role if error
@@ -86,6 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, userData?: Record<string, any>) => {
     setIsLoading(true);
     try {
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -95,6 +101,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) throw error;
+      
+      // Explicitly create profile after signup for reliability
+      if (data?.user?.id) {
+        try {
+          // Small delay to ensure auth signup is completed
+          setTimeout(async () => {
+            console.log("Creating profile for new user:", data.user?.id);
+            await getOrCreateProfile(data.user?.id);
+            console.log("Creating role for new user:", data.user?.id);
+            await getOrCreateUserRole(data.user?.id);
+          }, 1000);
+        } catch (profileError) {
+          console.error("Error creating profile after signup:", profileError);
+          // Continue - we don't want to fail signup if this fails
+        }
+      }
+
+      // We don't need to manually create a profile here as:
+      // 1. Database trigger will create it automatically
+      // 2. getOrCreateProfile will ensure it exists when accessing the profile
+      // 3. We now also try to create it explicitly as a failsafe
 
       toast({
         title: "Account created",
@@ -207,13 +234,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!userId) return navigate("/");
     
     try {
-      const { data, error } = await supabase.rpc('get_highest_role', {
-        user_id: userId
-      });
+      // Use getOrCreateUserRole to ensure a role exists
+      const role = await getOrCreateUserRole(userId);
       
-      if (error) throw error;
+      if (!role) {
+        throw new Error("Could not get or create role");
+      }
       
-      const role = data as UserRole;
       setUserRole(role);
       
       switch (role) {

@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   name: string;
@@ -14,6 +13,12 @@ export interface Product {
   original_price: number;
   created_at: string;
   updated_at: string;
+  // New clothing-specific fields
+  size?: string;
+  color?: string;
+  material?: string;
+  brand?: string;
+  gender?: string;
   // Add properties to make compatible with Supabase type
   category?: {
     id: string;

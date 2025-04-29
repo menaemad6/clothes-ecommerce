@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileRow } from "@/integrations/supabase/types.service";
 import { Separator } from "@/components/ui/separator";
+import { updateProfile } from "@/integrations/supabase/profiles.service";
 
 interface EditProfileModalProps {
   open: boolean;
@@ -60,22 +60,16 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     try {
       setIsLoading(true);
       
-      // Ensure the phone number is saved as a string to preserve leading zeros
-      const updatedProfile = {
+      // Use the updateProfile function instead of direct Supabase call
+      const success = await updateProfile(user.id, {
         name,
         avatar,
         phone_number: phoneNumber ? String(phoneNumber) : null,
-        updated_at: new Date().toISOString(),
-      };
+      });
       
-      console.log("Saving phone number:", updatedProfile.phone_number);
-      
-      const { error } = await supabase
-        .from("profiles")
-        .update(updatedProfile)
-        .eq("id", user.id);
-      
-      if (error) throw error;
+      if (!success) {
+        throw new Error("Failed to update profile");
+      }
       
       toast({
         title: "Profile updated",

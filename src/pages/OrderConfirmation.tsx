@@ -27,6 +27,8 @@ interface LocalOrderItem {
   } | null;
   price_at_time: number;
   quantity: number;
+  selected_color?: string;
+  selected_size?: string;
 }
 
 interface Order {
@@ -133,7 +135,9 @@ const OrderConfirmation = () => {
               unit: item.products.unit
             } : null,
             price_at_time: item.price_at_time,
-            quantity: item.quantity
+            quantity: item.quantity,
+            selected_color: item.selected_color,
+            selected_size: item.selected_size
           })),
           tax: typeof orderWithExtras.tax === 'number' ? orderWithExtras.tax : undefined,
           discount_amount: typeof orderWithExtras.discount_amount === 'number' ? orderWithExtras.discount_amount : undefined,
@@ -383,6 +387,35 @@ const OrderConfirmation = () => {
                                   <p className="text-sm text-muted-foreground mt-0.5">
                                     Per {item.product.unit}
                                   </p>
+                                )}
+                                {/* Display selected color and size if available */}
+                                {(item.selected_color || item.selected_size) && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {item.selected_size && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs px-2 py-0.5 bg-background border-border/50">
+                                        Size: {item.selected_size}
+                                      </Badge>
+                                    )}
+                                    {item.selected_color && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs px-2 py-0.5 bg-background border-border/50 flex items-center gap-1">
+                                        <span 
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ 
+                                            backgroundColor: 
+                                              ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                                .includes(item.selected_color.toLowerCase()) 
+                                                ? item.selected_color.toLowerCase()
+                                                : '#888' 
+                                          }}
+                                        ></span>
+                                        {item.selected_color}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-1">

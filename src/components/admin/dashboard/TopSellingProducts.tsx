@@ -12,6 +12,11 @@ interface Product {
   image?: string;
   price?: number;
   category?: string;
+  // Clothing-specific attributes
+  color?: string;
+  size?: string;
+  brand?: string;
+  gender?: string;
 }
 
 interface TopSellingProductsProps {
@@ -45,9 +50,28 @@ export const TopSellingProducts: React.FC<TopSellingProductsProps> = ({ products
                 )}
                 <div className="flex flex-col">
                   <span className="font-medium">{product.name}</span>
-                  {product.category && (
-                    <span className="text-xs text-muted-foreground">{product.category}</span>
-                  )}
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {product.category && (
+                      <span className="text-xs text-muted-foreground">{product.category}</span>
+                    )}
+                    {product.color && (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <span className="inline-block w-2 h-2 rounded-full mr-1" 
+                          style={{ 
+                            backgroundColor: 
+                              ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                .includes(product.color.toLowerCase()) 
+                                ? product.color.toLowerCase()
+                                : '#888' 
+                          }}
+                        ></span>
+                        <span>{product.color}</span>
+                      </div>
+                    )}
+                    {product.size && (
+                      <span className="text-xs px-1 rounded bg-muted text-muted-foreground">{product.size}</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col items-end">

@@ -50,6 +50,8 @@ interface OrderData {
     product_id: string;
     quantity: number;
     price_at_time: number;
+    selected_color?: string;
+    selected_size?: string;
   }>;
   email: string;
   phone_number: string;
@@ -325,7 +327,9 @@ const Checkout = () => {
       const orderItems = cart.map(item => ({
         product_id: item.product.id,
         quantity: item.quantity,
-        price_at_time: item.product.price
+        price_at_time: item.product.price,
+        selected_color: item.selectedColor,
+        selected_size: item.selectedSize
       }));
       
       // Create the full name from first and last name

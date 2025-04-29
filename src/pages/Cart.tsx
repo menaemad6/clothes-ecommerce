@@ -185,6 +185,31 @@ const Cart = () => {
                               <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                                 ${item.product.price.toFixed(2)} per {item.product.unit}
                               </p>
+                              {/* Display selected color and size if available */}
+                              {(item.selectedColor || item.selectedSize) && (
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  {item.selectedSize && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted/50">
+                                      Size: {item.selectedSize}
+                                    </span>
+                                  )}
+                                  {item.selectedColor && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted/50">
+                                      <span 
+                                        className="w-2 h-2 rounded-full mr-1"
+                                        style={{ 
+                                          backgroundColor: 
+                                            ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                              .includes(item.selectedColor.toLowerCase()) 
+                                              ? item.selectedColor.toLowerCase()
+                                              : '#888' 
+                                        }}
+                                      ></span>
+                                      {item.selectedColor}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <p className="text-base sm:text-lg font-medium mt-1 sm:mt-0">
                               ${(item.product.price * item.quantity).toFixed(2)}
@@ -196,7 +221,7 @@ const Cart = () => {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                                onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.selectedColor, item.selectedSize)}
                                 disabled={item.quantity <= 1}
                                 className="rounded-none h-6 w-6 sm:h-8 sm:w-8"
                               >
@@ -206,7 +231,7 @@ const Cart = () => {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.selectedColor, item.selectedSize)}
                                 disabled={item.quantity >= item.product.stock}
                                 className="rounded-none h-6 w-6 sm:h-8 sm:w-8"
                               >
@@ -217,7 +242,7 @@ const Cart = () => {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              onClick={() => removeFromCart(item.product.id)}
+                              onClick={() => removeFromCart(item.product.id, item.selectedColor, item.selectedSize)}
                               className="text-muted-foreground hover:text-destructive text-xs sm:text-sm px-2 sm:px-3"
                             >
                               <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />

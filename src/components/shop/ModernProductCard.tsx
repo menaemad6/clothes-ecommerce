@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { ShoppingCart, Heart } from "lucide-react";
@@ -48,9 +47,37 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
         : normalizedProduct.category
     };
     
-    addToCart(cartProduct, 1);
+    // Helper function to parse potential array values stored as strings
+    const parseArrayValue = (value: string | string[] | null | undefined): string | undefined => {
+      if (!value) return undefined;
+      
+      // If it's already an array, take the first value
+      if (Array.isArray(value)) return value[0];
+      
+      // If it's a string that looks like a JSON array, try to parse it
+      if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed[0];
+          }
+        } catch (e) {
+          // If parsing fails, just use the string as is
+        }
+      }
+      
+      // Otherwise return the value as is if it's a string
+      return typeof value === 'string' ? value : undefined;
+    };
+    
+    // Extract first size and color
+    const firstSize = parseArrayValue(normalizedProduct.size);
+    const firstColor = parseArrayValue(normalizedProduct.color);
+    
+    // Add to cart with the first size and color
+    addToCart(cartProduct, 1, firstColor, firstSize);
   };
-  
+
   return (
     <Link 
       to={`/product/${normalizedProduct.id}`}
@@ -110,6 +137,15 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
           )}>
             {normalizedProduct.name}
           </h3>
+          
+          {/* Display clothing attributes */}
+          {normalizedProduct.brand && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+              <span className="text-xs text-muted-foreground flex items-center">
+                {normalizedProduct.brand}
+              </span>
+            </div>
+          )}
         </div>
         
         <div className="mt-2 flex items-center justify-between">
@@ -128,9 +164,11 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
             )}
           </div>
           
-          <div className="text-xs text-muted-foreground">
-            {normalizedProduct.unit}
-          </div>
+          {normalizedProduct.gender && (
+            <div className="text-xs text-muted-foreground capitalize">
+              {normalizedProduct.gender}
+            </div>
+          )}
         </div>
       </div>
     </Link>

@@ -45,6 +45,12 @@ export function mapSupabaseProductToAppProduct(supabaseProduct: any): AppProduct
     category: categoryField,
     original_price: supabaseProduct.original_price || 0,
     is_new: supabaseProduct.is_new || false,
+    // Add clothing-specific fields
+    size: supabaseProduct.size || '',
+    color: supabaseProduct.color || '',
+    material: supabaseProduct.material || '',
+    brand: supabaseProduct.brand || '',
+    gender: supabaseProduct.gender || '',
     // Add compatibility properties
     originalPrice: supabaseProduct.original_price || 0,
     isNew: supabaseProduct.is_new || false,
@@ -73,6 +79,12 @@ export function mapAppProductToSupabaseProduct(appProduct: Partial<AppProduct>):
     category_id: appProduct.category_id || appProduct.categoryId || (appProduct.category && typeof appProduct.category === 'object' ? appProduct.category.id : ""),
     original_price: appProduct.original_price || appProduct.originalPrice,
     is_new: appProduct.is_new || appProduct.isNew,
+    // Add clothing-specific fields
+    size: appProduct.size || null,
+    color: appProduct.color || null,
+    material: appProduct.material || null,
+    brand: appProduct.brand || null,
+    gender: appProduct.gender || null,
     created_at: appProduct.created_at || new Date().toISOString(),
     updated_at: appProduct.updated_at || new Date().toISOString()
   };
@@ -112,6 +124,12 @@ export function ensureProductTypeCompatibility(product: any): AppProduct {
       categoryId: product.category_id || product.category?.id || "",
       originalPrice: product.original_price || 0,
       isNew: product.is_new || false,
+      // Include clothing-specific fields
+      size: product.size || '',
+      color: product.color || '',
+      material: product.material || '',
+      brand: product.brand || '',
+      gender: product.gender || ''
     } as AppProduct;
   }
   
@@ -168,6 +186,12 @@ export function mapAppProductToSupabaseProductForDisplay(appProduct: AppProduct)
     category: categoryField,
     original_price: appProduct.original_price || appProduct.originalPrice,
     is_new: appProduct.is_new || appProduct.isNew,
+    // Include clothing-specific fields
+    size: appProduct.size || null,
+    color: appProduct.color || null,
+    material: appProduct.material || null,
+    brand: appProduct.brand || null,
+    gender: appProduct.gender || null,
     created_at: appProduct.created_at || new Date().toISOString(),
     updated_at: appProduct.updated_at || new Date().toISOString()
   } as SupabaseProduct;

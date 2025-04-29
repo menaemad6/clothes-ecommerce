@@ -32,9 +32,31 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // Add state for selected color and size
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  
   // Add zoom effect state
   const [isZoomed, setIsZoomed] = useState(false);
   const [lastAddedTimestamp, setLastAddedTimestamp] = useState(0);
+  
+  // Add utility function to parse array fields (handle either JSON strings or actual arrays)
+  const parseArrayField = (field: string | string[] | null | undefined): string[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    try {
+      // If it's a JSON string, parse it
+      const parsed = JSON.parse(field);
+      return Array.isArray(parsed) ? parsed : [field];
+    } catch (e) {
+      // If it can't be parsed as JSON, treat it as a single value
+      return [field];
+    }
+  };
+
+  // Parse available colors and sizes
+  const availableColors = product ? parseArrayField(product.color) : [];
+  const availableSizes = product ? parseArrayField(product.size) : [];
   
   useEffect(() => {
     const fetchProduct = async () => {
@@ -70,6 +92,18 @@ const ProductDetail = () => {
     fetchProduct();
     window.scrollTo(0, 0);
   }, [id, toast]);
+  
+  // Set initial selected color and size when product loads
+  useEffect(() => {
+    if (product) {
+      if (availableColors.length > 0 && !selectedColor) {
+        setSelectedColor(availableColors[0]);
+      }
+      if (availableSizes.length > 0 && !selectedSize) {
+        setSelectedSize(availableSizes[0]);
+      }
+    }
+  }, [product, availableColors, availableSizes, selectedColor, selectedSize]);
   
   if (isLoading) {
     return (
@@ -144,11 +178,18 @@ const ProductDetail = () => {
   };
   
   const handleAddToCart = () => {
-    addToCart(product, quantity);
+    // Include selected color and size in the cart item if available
+    const productToAdd = {
+      ...product,
+      selectedColor: selectedColor || undefined,
+      selectedSize: selectedSize || undefined
+    };
+    
+    addToCart(productToAdd, quantity, selectedColor || undefined, selectedSize || undefined);
     setLastAddedTimestamp(Date.now());
     toast({
       title: "Added to cart",
-      description: `${quantity} × ${product.name} added to your cart`,
+      description: `${quantity} × ${product.name}${selectedSize ? ` (${selectedSize})` : ''}${selectedColor ? ` in ${selectedColor}` : ''} added to your cart`,
       action: (
         <Button size="sm" variant="outline" onClick={() => navigate('/cart')} 
           className="rounded-full border-primary/30 hover:border-primary hover:bg-primary/10">
@@ -173,23 +214,23 @@ const ProductDetail = () => {
   const features = [
     {
       icon: <Check className="w-5 h-5" />,
-      title: "Fresh Guaranteed",
-      description: "High-quality fresh products"
+      title: "Quality Materials",
+      description: "Premium fabrics and materials"
     },
     {
       icon: <Truck className="w-5 h-5" />,
-      title: "Fast Delivery",
+      title: "Fast Shipping",
       description: "Express delivery within 24 hours"
     },
     {
       icon: <Shield className="w-5 h-5" />,
-      title: "100% Satisfaction",
-      description: "Money-back guarantee"
+      title: "Easy Returns",
+      description: "30-day return policy"
     },
     {
       icon: <Leaf className="w-5 h-5" />,
-      title: "Organic Certified",
-      description: "Sustainably sourced products"
+      title: "Sustainable",
+      description: "Eco-friendly practices"
     }
   ];
   
@@ -374,23 +415,45 @@ const ProductDetail = () => {
                 </div>
                   
                 <div className="flex items-baseline gap-4 mt-6">
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-3xl font-bold text-foreground">
-                        ${Number(product.price).toFixed(2)}
-                        {product.unit && <span className="text-lg font-medium text-muted-foreground ml-2">/ {product.unit}</span>}
-                      </span>
-                      {product.compare_at_price && (
-                        <span className="text-lg text-muted-foreground line-through">
-                          ${Number(product.compare_at_price).toFixed(2)}
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {product.original_price && product.original_price > product.price ? (
+                        <>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
+                                ${Number(product.price).toFixed(2)}
+                              </span>
+                              <div className="flex items-center">
+                                <Badge 
+                                  className="rounded-full bg-red-500 text-white text-xs px-2 py-0.5 shadow-sm"
+                                >
+                                  -{Math.round((1 - Number(product.price) / Number(product.original_price)) * 100)}%
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-base text-muted-foreground line-through decoration-1">
+                                ${Number(product.original_price).toFixed(2)}
+                              </span>
+                              <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                                Save ${(Number(product.original_price) - Number(product.price)).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-3xl font-bold text-foreground">
+                          ${Number(product.price).toFixed(2)}
                         </span>
                       )}
                     </div>
                     
-                    {product.compare_at_price && (
-                      <Badge variant="secondary" className="font-medium bg-green-100/50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30">
-                        Save {Math.round((1 - Number(product.price) / Number(product.compare_at_price)) * 100)}%
-                      </Badge>
+                    {product.original_price && product.original_price > product.price && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30 rounded-lg p-2 flex items-center text-green-700 dark:text-green-400">
+                        <Check className="h-4 w-4 mr-2" />
+                        <span className="text-sm">Limited time offer! Original price: ${Number(product.original_price).toFixed(2)}</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -404,6 +467,94 @@ const ProductDetail = () => {
                   </p>
                 </div>
               )}
+                
+              {/* Product variants section - Available Colors and Sizes */}
+              <div className="space-y-5">
+                {/* Material Type */}
+                {product.material && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Material</h3>
+                    <div className="flex items-center">
+                      <Badge variant="outline" className="rounded-full px-3 py-1 text-xs bg-background/60 backdrop-blur-sm border-border/40 dark:border-border/20 shadow-sm">
+                        <span className="font-medium">{product.material}</span>
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Available Colors - Now with selection */}
+                {availableColors.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Color: <span className="text-foreground">{selectedColor}</span></h3>
+                    <div className="flex flex-wrap gap-2">
+                      {availableColors.map((color, index) => (
+                        <button 
+                          key={index}
+                          type="button"
+                          onClick={() => setSelectedColor(color)}
+                          className={cn(
+                            "group rounded-full p-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1",
+                            selectedColor === color ? "ring-2 ring-primary" : "ring-1 ring-border/40 hover:ring-primary/60"
+                          )}
+                        >
+                          <div 
+                            className={cn(
+                              "w-8 h-8 rounded-full border border-border/30 relative",
+                              selectedColor === color ? "ring-1 ring-white/80 dark:ring-black/20" : ""
+                            )}
+                            style={{ 
+                              backgroundColor: 
+                                ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                  .includes(color.toLowerCase()) 
+                                  ? color.toLowerCase()
+                                  : '#888' 
+                            }}
+                          >
+                            {selectedColor === color && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Check 
+                                  className={cn(
+                                    "w-4 h-4", 
+                                    ['white', 'yellow'].includes(color.toLowerCase())
+                                      ? "text-black/70" 
+                                      : "text-white/90"
+                                  )} 
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <span className="sr-only">{color}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Available Sizes - Now with selection */}
+                {availableSizes.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Size: <span className="text-foreground">{selectedSize}</span></h3>
+                    <div className="flex flex-wrap gap-2">
+                      {availableSizes.map((size, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setSelectedSize(size)}
+                          className={cn(
+                            "h-9 min-w-[2.5rem] rounded-full px-3 py-1.5 text-sm transition-all duration-200",
+                            "border focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1",
+                            selectedSize === size 
+                              ? "bg-primary text-primary-foreground border-primary" 
+                              : "bg-background/80 border-border/40 dark:border-border/20 hover:border-primary/60 text-foreground"
+                          )}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
                 
               {/* Features section - Premium Redesign */}
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
@@ -514,25 +665,123 @@ const ProductDetail = () => {
                   <TabsContent value="details" className="pt-6">
                     <div className="bg-muted/30 dark:bg-muted/20 rounded-2xl overflow-hidden border border-border/20 dark:border-border/10 shadow-sm">
                       <div className="grid grid-cols-1 text-sm">
-                        <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
-                          <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
-                            Weight
+                        {/* Display size as a list if it's an array */}
+                        {availableSizes.length > 0 && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Sizes
+                            </div>
+                            <div className="p-4 flex flex-wrap gap-1">
+                              {availableSizes.map((size, index) => (
+                                <Badge 
+                                  key={index} 
+                                  variant="outline" 
+                                  className="rounded-full px-2 py-0.5 text-xs border-border/30 dark:border-border/20"
+                                >
+                                  {size}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                          <div className="p-4">{product.weight || "Not specified"}</div>
-                        </div>
+                        )}
+                        
+                        {/* Display single size if not an array */}
+                        {product.size && availableSizes.length <= 1 && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Size
+                            </div>
+                            <div className="p-4">{product.size}</div>
+                          </div>
+                        )}
+                        
+                        {/* Display colors as a list if it's an array */}
+                        {availableColors.length > 0 && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Colors
+                            </div>
+                            <div className="p-4 flex flex-wrap gap-1">
+                              {availableColors.map((color, index) => (
+                                <div key={index} className="flex items-center mr-2 mb-1">
+                                  <span 
+                                    className="inline-block w-3 h-3 rounded-full mr-1 border border-border/30" 
+                                    style={{ 
+                                      backgroundColor: 
+                                        ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                            .includes(color.toLowerCase()) 
+                                            ? color.toLowerCase()
+                                            : '#888' 
+                                    }}
+                                  ></span>
+                                  <span className="text-xs">{color}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Display single color if not an array */}
+                        {product.color && availableColors.length <= 1 && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Color
+                            </div>
+                            <div className="p-4 flex items-center">
+                              <span 
+                                className="inline-block w-4 h-4 rounded-full mr-2 border border-border/30" 
+                                style={{ 
+                                  backgroundColor: 
+                                    ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                        .includes(product.color.toLowerCase()) 
+                                        ? product.color.toLowerCase()
+                                        : '#888' 
+                                }}
+                              ></span>
+                              {product.color}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {product.material && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Material
+                            </div>
+                            <div className="p-4">{product.material}</div>
+                          </div>
+                        )}
+                        
+                        {product.brand && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Brand
+                            </div>
+                            <div className="p-4">{product.brand}</div>
+                          </div>
+                        )}
+                        
+                        {product.gender && (
+                          <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
+                            <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
+                              Gender
+                            </div>
+                            <div className="p-4 capitalize">{product.gender}</div>
+                          </div>
+                        )}
                         
                         <div className="grid grid-cols-2 items-center border-b border-border/20 dark:border-border/10">
                           <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
                             Unit
                           </div>
-                          <div className="p-4">{product.unit || "Not specified"}</div>
+                          <div className="p-4">{(product as unknown as { unit?: string }).unit || "Item"}</div>
                         </div>
                         
                         <div className="grid grid-cols-2 items-center">
                           <div className="p-4 font-medium bg-gradient-to-r from-muted/70 to-muted/40 dark:from-muted/40 dark:to-muted/20 text-muted-foreground dark:text-muted-foreground/90">
                             SKU
                           </div>
-                          <div className="p-4">{product.sku || "Not specified"}</div>
+                          <div className="p-4">{product.id.slice(0, 8).toUpperCase() || "Not specified"}</div>
                         </div>
                       </div>
                     </div>
@@ -543,16 +792,16 @@ const ProductDetail = () => {
               {/* Trust badges - Premium Redesign */}
               <div className="flex flex-wrap justify-center gap-3 mt-8 pt-6 border-t border-border/30 dark:border-border/10">
                 <Badge variant="outline" className="rounded-full px-4 py-1.5 text-xs bg-background/60 backdrop-blur-sm border-border/40 dark:border-border/20 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                  <Globe className="w-3 h-3 mr-1.5 text-primary/80" />
-                  <span className="font-medium">Sustainably Sourced</span>
+                  <Leaf className="w-3 h-3 mr-1.5 text-primary/80" />
+                  <span className="font-medium">Ethically Made</span>
                 </Badge>
                 <Badge variant="outline" className="rounded-full px-4 py-1.5 text-xs bg-background/60 backdrop-blur-sm border-border/40 dark:border-border/20 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
                   <Shield className="w-3 h-3 mr-1.5 text-primary/80" />
-                  <span className="font-medium">Secure Payment</span>
+                  <span className="font-medium">Secure Checkout</span>
                 </Badge>
                 <Badge variant="outline" className="rounded-full px-4 py-1.5 text-xs bg-background/60 backdrop-blur-sm border-border/40 dark:border-border/20 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
                   <Truck className="w-3 h-3 mr-1.5 text-primary/80" />
-                  <span className="font-medium">Fast Shipping</span>
+                  <span className="font-medium">Free Returns</span>
                 </Badge>
               </div>
             </div>

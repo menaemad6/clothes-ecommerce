@@ -12,9 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Image as ImageIcon, X, Trash2, AlertCircle } from "lucide-react";
+import { Loader2, Image as ImageIcon, X, Trash2, AlertCircle, Plus, ChevronDown, Check } from "lucide-react";
 import { Product, Category } from "@/integrations/supabase/types.service";
 import { uploadProductImage } from "@/integrations/supabase/storage.service";
 import {
@@ -29,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface ProductFormProps {
   productId?: string;
@@ -47,7 +50,106 @@ interface ProductFormData {
   discount: number | null;
   is_new: boolean;
   image?: string | null;
+  size?: string[] | string;
+  color?: string[] | string;
+  material?: string;
+  brand?: string;
+  gender?: string;
 }
+
+// Predefined options for sizes and colors
+const COLOR_OPTIONS = [
+  "Black", "White", "Red", "Blue", "Green", "Yellow", 
+  "Gray", "Purple", "Pink", "Brown", "Orange", "Navy"
+];
+
+const SIZE_OPTIONS = [
+  "XS", "S", "M", "L", "XL", "XXL", "XXXL", 
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "One Size"
+];
+
+// Custom MultiSelect component for sizes and colors
+const MultiSelect = ({ 
+  options, 
+  selectedValues, 
+  onChange, 
+  placeholder,
+  label
+}: { 
+  options: string[], 
+  selectedValues: string[], 
+  onChange: (values: string[]) => void,
+  placeholder: string,
+  label: string
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const toggleOption = (option: string) => {
+    const newValues = selectedValues.includes(option)
+      ? selectedValues.filter(val => val !== option)
+      : [...selectedValues, option];
+    onChange(newValues);
+  };
+  
+  return (
+    <div className="relative">
+      <div 
+        className={cn(
+          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+          "cursor-pointer"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex flex-wrap gap-1 flex-1 overflow-hidden">
+          {selectedValues.length === 0 ? (
+            <span className="text-muted-foreground">{placeholder}</span>
+          ) : (
+            selectedValues.map(value => (
+              <Badge 
+                key={value} 
+                variant="secondary" 
+                className="px-2 py-0.5 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleOption(value);
+                }}
+              >
+                {value}
+                <X className="ml-1 h-3 w-3" />
+              </Badge>
+            ))
+          )}
+        </div>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 rounded-md border border-input bg-background shadow-md max-h-[200px] overflow-auto">
+          <div className="p-2 space-y-1">
+            {options.map(option => (
+              <div 
+                key={option} 
+                className={cn(
+                  "flex items-center space-x-2 text-sm rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent",
+                  selectedValues.includes(option) ? "bg-accent/50" : ""
+                )}
+                onClick={() => toggleOption(option)}
+              >
+                <div className="flex-shrink-0 w-4 h-4 border rounded-sm flex items-center justify-center border-primary">
+                  {selectedValues.includes(option) && (
+                    <Check className="h-3 w-3 text-primary" />
+                  )}
+                </div>
+                <span>{option}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -57,6 +159,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  // Selected sizes and colors for multi-select
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     description: "",
@@ -68,12 +175,31 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
     featured: false,
     discount: null,
     is_new: false,
+    size: [],
+    color: [],
+    material: "",
+    brand: "",
+    gender: ""
   });
   
   const { toast } = useToast();
   const navigate = useNavigate();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const uploadInProgressRef = React.useRef<boolean>(false);
+  
+  // Parse string arrays from Supabase
+  const parseArrayField = (field: string | string[] | null | undefined): string[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    try {
+      // If it's a JSON string, parse it
+      const parsed = JSON.parse(field as string);
+      return Array.isArray(parsed) ? parsed : [field as string];
+    } catch (e) {
+      // If it can't be parsed as JSON, treat it as a single value
+      return [field as string];
+    }
+  };
   
   // Load categories and product data if editing
   useEffect(() => {
@@ -113,6 +239,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
           setFormData({
             ...data,
           });
+          
+          // Parse colors and sizes arrays from the database
+          const colors = parseArrayField(data.color);
+          const sizes = parseArrayField(data.size);
+          
+          setSelectedColors(colors);
+          setSelectedSizes(sizes);
           
           if (data.image) {
             setImagePreview(data.image);
@@ -313,6 +446,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
         console.log("Fixed image URL format:", imageUrl);
       }
       
+      // Save selected sizes and colors as JSON strings
+      const sizesJson = selectedSizes.length ? JSON.stringify(selectedSizes) : null;
+      const colorsJson = selectedColors.length ? JSON.stringify(selectedColors) : null;
+      
       // Create the product data object with required fields
       const productData = {
         ...formData,
@@ -329,6 +466,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
         is_new: formData.is_new || false,
         discount: formData.discount,
         original_price: formData.original_price,
+        // Clothing-specific fields with multi-select values
+        size: sizesJson,
+        color: colorsJson,
+        material: formData.material,
+        brand: formData.brand,
+        gender: formData.gender
       };
       
       console.log("Saving product data:", productData);
@@ -515,14 +658,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="item">Item</SelectItem>
-                    <SelectItem value="kg">Kilogram (kg)</SelectItem>
-                    <SelectItem value="g">Gram (g)</SelectItem>
-                    <SelectItem value="l">Liter (l)</SelectItem>
-                    <SelectItem value="ml">Milliliter (ml)</SelectItem>
-                    <SelectItem value="lb">Pound (lb)</SelectItem>
-                    <SelectItem value="oz">Ounce (oz)</SelectItem>
-                    <SelectItem value="packet">Packet</SelectItem>
-                    <SelectItem value="box">Box</SelectItem>
+                    <SelectItem value="piece">Piece</SelectItem>
+                    <SelectItem value="pair">Pair</SelectItem>
+                    <SelectItem value="set">Set</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -559,6 +697,78 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, onSuccess }) => {
                 onChange={handleChange}
                 placeholder="0"
               />
+            </div>
+
+            {/* Clothing-specific fields */}
+            <div className="pt-4">
+              <h3 className="text-sm font-medium mb-2">Product Details</h3>
+              <Separator className="mb-4" />
+              
+              <div className="grid gap-4 grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="size">Available Sizes</Label>
+                  <MultiSelect
+                    options={SIZE_OPTIONS}
+                    selectedValues={selectedSizes}
+                    onChange={setSelectedSizes}
+                    placeholder="Select sizes"
+                    label="Sizes"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="color">Available Colors</Label>
+                  <MultiSelect
+                    options={COLOR_OPTIONS}
+                    selectedValues={selectedColors}
+                    onChange={setSelectedColors}
+                    placeholder="Select colors"
+                    label="Colors"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid gap-4 grid-cols-2 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="material">Material</Label>
+                  <Input
+                    id="material"
+                    name="material"
+                    value={formData.material || ""}
+                    onChange={handleChange}
+                    placeholder="Cotton, Polyester, etc."
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="brand">Brand</Label>
+                  <Input
+                    id="brand"
+                    name="brand"
+                    value={formData.brand || ""}
+                    onChange={handleChange}
+                    placeholder="Brand name"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  value={formData.gender || ""}
+                  onValueChange={(value) => handleSelectChange("gender", value)}
+                >
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="women">Women</SelectItem>
+                    <SelectItem value="kids">Kids</SelectItem>
+                    <SelectItem value="unisex">Unisex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           

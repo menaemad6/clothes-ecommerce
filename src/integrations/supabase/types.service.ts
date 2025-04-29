@@ -19,6 +19,11 @@ export type ProductDetail = {
   is_new?: boolean;
   original_price?: number;
   description?: string;
+  size?: string;
+  color?: string;
+  material?: string;
+  brand?: string;
+  gender?: string;
 };
 
 export type Category = {
@@ -39,11 +44,19 @@ export type Order = OrderRow & {
   order_items?: OrderItem[];
   delivery_slots?: DeliverySlot | null;
   delivery_slot?: string; // Adding the new delivery_slot field which stores the date as string
+  full_name?: string;
+  email?: string;
+  phone_number?: string;
+  tax?: number;
+  discount_amount?: number;
+  shipping_amount?: number;
 };
 
 // Update OrderItem type to include products property
 export type OrderItem = OrderItemRow & {
   products?: ProductDetail | null;
+  selected_color?: string;
+  selected_size?: string;
 };
 
 export type Profile = ProfileRow;
@@ -105,7 +118,13 @@ export function ensureProductTypeCompatibility(product: any): Product {
         description: "",
         image: "",
         created_at: new Date().toISOString()
-      }
+      },
+      // Ensure clothing-specific fields are present
+      size: product.size || null,
+      color: product.color || null,
+      material: product.material || null,
+      brand: product.brand || null,
+      gender: product.gender || null
     } as Product;
   }
   
@@ -118,6 +137,12 @@ export function ensureProductTypeCompatibility(product: any): Product {
       description: "",
       image: "",
       created_at: new Date().toISOString()
-    }
+    },
+    // Ensure clothing-specific fields are present
+    size: product.size || null,
+    color: product.color || null,
+    material: product.material || null,
+    brand: product.brand || null,
+    gender: product.gender || null
   } as Product;
 }

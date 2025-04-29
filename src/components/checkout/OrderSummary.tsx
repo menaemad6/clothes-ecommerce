@@ -152,6 +152,31 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <span>{item.quantity} × ${Number(item.product.price).toFixed(2)}</span>
                   <span>${(item.product.price * item.quantity).toFixed(2)}</span>
                 </div>
+                {/* Display selected size and color if available */}
+                {(item.selectedSize || item.selectedColor) && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {item.selectedSize && (
+                      <span className="text-xs px-1.5 py-0.5 bg-muted/50 rounded-sm">
+                        Size: {item.selectedSize}
+                      </span>
+                    )}
+                    {item.selectedColor && (
+                      <span className="text-xs px-1.5 py-0.5 bg-muted/50 rounded-sm flex items-center">
+                        <span 
+                          className="w-2 h-2 rounded-full mr-1"
+                          style={{ 
+                            backgroundColor: 
+                              ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                .includes(item.selectedColor.toLowerCase()) 
+                                ? item.selectedColor.toLowerCase()
+                                : '#888' 
+                          }}
+                        ></span>
+                        {item.selectedColor}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import ModernCard from "@/components/ui/modern-card";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "react-router-dom";
-import { ChevronRight, Package, ShoppingBag } from "lucide-react";
+import { ChevronRight, Package, ShoppingBag, Paintbrush, Ruler } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface OrderItem {
@@ -12,6 +12,8 @@ interface OrderItem {
   product_id: string;
   quantity: number;
   price_at_time: number;
+  selected_color?: string;
+  selected_size?: string;
   products?: {
     id: string;
     name: string;
@@ -77,6 +79,52 @@ const getBadgeStyles = (status: string) => {
   }
 };
 
+// Format array values to display as comma-separated strings
+const formatArrayValue = (value: string | string[] | null): string => {
+  if (!value) return '';
+  
+  // If it's already an array, join it
+  if (Array.isArray(value)) return value.join(', ');
+  
+  // If it's a string that looks like JSON array, try to parse it
+  if (typeof value === 'string') {
+    // Clean up the string in case it has extra quotes or escaped characters
+    const cleanedValue = value
+      .replace(/^"/, '')
+      .replace(/"$/, '')
+      .replace(/\\"/g, '"')
+      .trim();
+    
+    // Try to parse as JSON if it looks like an array
+    if ((cleanedValue.startsWith('[') && cleanedValue.endsWith(']')) ||
+        (cleanedValue.includes(',') && !cleanedValue.includes(':'))) {
+      try {
+        // If it looks like a JSON array
+        if (cleanedValue.startsWith('[') && cleanedValue.endsWith(']')) {
+          const parsedArray = JSON.parse(cleanedValue);
+          if (Array.isArray(parsedArray)) {
+            return parsedArray.join(', ');
+          }
+        } 
+        // If it's a comma-separated string but not JSON formatted
+        else if (cleanedValue.includes(',')) {
+          return cleanedValue;
+        }
+      } catch (e) {
+        // If parsing fails, treat as a comma-separated string
+        if (cleanedValue.includes(',')) {
+          return cleanedValue;
+        }
+        // Just return the original string
+        return value;
+      }
+    }
+  }
+  
+  // Otherwise, return the string as is
+  return value;
+};
+
 const OrderCard: React.FC<OrderCardProps> = ({ order, status, withItems = false, onViewDetails }) => {
   const formattedDate = order.created_at 
     ? formatDistanceToNow(new Date(order.created_at), { addSuffix: true })
@@ -87,6 +135,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, status, withItems = false,
     : '';
 
   const normalizedStatus = normalizeStatus(order.status);
+  
+  // Debug log to see the order data
+
+  
+
 
   return (
     <ModernCard 
@@ -187,6 +240,24 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, status, withItems = false,
                     <span>{item.quantity}</span>
                     {item.products?.unit && <span>({item.products.unit})</span>}
                   </div>
+                  
+                  {/* Product variations (size and color) */}
+                  {(item.selected_size || item.selected_color) && (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {item.selected_size && (
+                        <div className="text-xs flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
+                          <Ruler className="h-3 w-3 mr-1 text-gray-500" />
+                          <span>{formatArrayValue(item.selected_size)}</span>
+                        </div>
+                      )}
+                      {item.selected_color && (
+                        <div className="text-xs flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
+                          <Paintbrush className="h-3 w-3 mr-1 text-gray-500" />
+                          <span>{formatArrayValue(item.selected_color)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="text-right font-medium">

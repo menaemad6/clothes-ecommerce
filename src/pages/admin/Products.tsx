@@ -62,6 +62,32 @@ interface DataColumn {
   accessorFn: ((row: any) => React.ReactNode) | string;
 }
 
+// Add utility function to parse array fields
+const parseArrayField = (field: string | string[] | null | undefined): string[] => {
+  if (!field) return [];
+  if (Array.isArray(field)) return field;
+  try {
+    // If it's a JSON string, parse it
+    const parsed = JSON.parse(field as string);
+    return Array.isArray(parsed) ? parsed : [field as string];
+  } catch (e) {
+    // If it can't be parsed as JSON, treat it as a single value
+    return [field as string];
+  }
+};
+
+// Add constants for predefined options, matching ProductForm
+const COLOR_OPTIONS = [
+  "Black", "White", "Red", "Blue", "Green", "Yellow", 
+  "Gray", "Purple", "Pink", "Brown", "Orange", "Navy"
+];
+
+const SIZE_OPTIONS = [
+  "XS", "S", "M", "L", "XL", "XXL", "XXXL", 
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "One Size"
+];
+
 const ProductsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -76,6 +102,9 @@ const ProductsPage = () => {
     category: "",
     status: "",
     price: "",
+    size: "",
+    color: "",
+    gender: ""
   });
 
   useEffect(() => {
@@ -106,6 +135,19 @@ const ProductsPage = () => {
           query = query.eq("is_new", true);
         } else if (filters.status === "discounted") {
           query = query.not("discount", "is", null);
+        }
+
+        // For size and color, we need to use ilike and or for searching within JSON arrays
+        if (filters.size && filters.size !== "all") {
+          query = query.or(`size.ilike.%${filters.size}%,size.eq.${filters.size}`);
+        }
+
+        if (filters.color && filters.color !== "all") {
+          query = query.or(`color.ilike.%${filters.color}%,color.eq.${filters.color}`);
+        }
+
+        if (filters.gender && filters.gender !== "all") {
+          query = query.eq("gender", filters.gender);
         }
 
         if (filters.price === "low") {
@@ -215,6 +257,9 @@ const ProductsPage = () => {
       category: "",
       status: "",
       price: "",
+      size: "",
+      color: "",
+      gender: ""
     });
   };
 
@@ -277,6 +322,75 @@ const ProductsPage = () => {
           )}
         </div>
       ),
+    },
+    {
+      id: "clothing_details",
+      header: "Product Details",
+      cell: ({ row }) => {
+        // Parse sizes and colors as arrays
+        const sizes = parseArrayField(row.original.size);
+        const colors = parseArrayField(row.original.color);
+        
+        return (
+          <div className="text-left">
+            <div className="flex flex-wrap gap-1 mb-1">
+              {sizes.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Sizes:</span>
+                  {sizes.map((size, index) => (
+                    <Badge 
+                      key={index}
+                      variant="outline" 
+                      className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 text-xs px-1.5 py-0.5"
+                    >
+                      {size}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-1 mb-1">
+              {colors.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Colors:</span>
+                  {colors.map((color, index) => (
+                    <Badge 
+                      key={index}
+                      variant="outline" 
+                      className="flex items-center bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800 text-xs px-1.5 py-0.5"
+                    >
+                      <span 
+                        className="inline-block w-2 h-2 rounded-full mr-1" 
+                        style={{ 
+                          backgroundColor: 
+                            ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                              .includes(color.toLowerCase()) 
+                              ? color.toLowerCase()
+                              : '#888' 
+                        }}
+                      ></span>
+                      {color}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {row.original.gender && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                {row.original.gender}
+              </Badge>
+            )}
+            
+            {row.original.brand && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {row.original.brand}
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: "stock",
@@ -407,8 +521,8 @@ const ProductsPage = () => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row gap-4 pb-4 bg-gradient-to-r from-gray-50/50 to-white/50 dark:from-gray-900/50 dark:to-gray-800/30 p-4 rounded-xl backdrop-blur-sm">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
+                <div className="flex flex-col gap-4 pb-4 bg-gradient-to-r from-gray-50/50 to-white/50 dark:from-gray-900/50 dark:to-gray-800/30 p-4 rounded-xl backdrop-blur-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-4">
                     <Select
                       value={filters.category}
                       onValueChange={(value) => setFilters({ ...filters, category: value })}
@@ -454,9 +568,55 @@ const ProductsPage = () => {
                         <SelectItem value="high">Price: High to Low</SelectItem>
                       </SelectContent>
                     </Select>
+                
+                    <Select
+                      value={filters.size}
+                      onValueChange={(value) => setFilters({ ...filters, size: value })}
+                    >
+                      <SelectTrigger className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow transition-all duration-200">
+                        <SelectValue placeholder="Size" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                        <SelectItem value="all">All Sizes</SelectItem>
+                        {SIZE_OPTIONS.map((size) => (
+                          <SelectItem key={size} value={size}>{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filters.color}
+                      onValueChange={(value) => setFilters({ ...filters, color: value })}
+                    >
+                      <SelectTrigger className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow transition-all duration-200">
+                        <SelectValue placeholder="Color" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                        <SelectItem value="all">All Colors</SelectItem>
+                        {COLOR_OPTIONS.map((color) => (
+                          <SelectItem key={color} value={color}>{color}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filters.gender}
+                      onValueChange={(value) => setFilters({ ...filters, gender: value })}
+                    >
+                      <SelectTrigger className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow transition-all duration-200">
+                        <SelectValue placeholder="Gender" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                        <SelectItem value="all">All Genders</SelectItem>
+                        <SelectItem value="men">Men</SelectItem>
+                        <SelectItem value="women">Women</SelectItem>
+                        <SelectItem value="kids">Kids</SelectItem>
+                        <SelectItem value="unisex">Unisex</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
-                  <div className="flex items-center">
+                  <div className="flex justify-end">
                     <Button 
                       variant="outline" 
                       className="whitespace-nowrap bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg shadow-sm hover:shadow transition-all duration-200"

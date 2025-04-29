@@ -23,11 +23,11 @@ const Orders = () => {
       try {
         setIsLoading(true);
         const userOrders = await getOrdersWithItems(user.id);
-        console.log("Fetched orders:", userOrders); // Debug log
+
         if (userOrders && userOrders.length > 0) {
           setOrders(userOrders);
         } else {
-          console.log("No orders found for user:", user.id);
+
           setOrders([]);
         }
       } catch (error) {

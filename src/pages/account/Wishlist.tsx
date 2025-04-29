@@ -30,11 +30,11 @@ const Wishlist = () => {
       setIsLoading(true);
       try {
         const items = await getUserWishlist(user.id);
-        console.log("Fetched wishlist items:", items); // Debug log
+
         if (items && items.length > 0) {
           setWishlistItems(items);
         } else {
-          console.log("No wishlist items found for user:", user.id);
+
           setWishlistItems([]);
         }
       } catch (error) {

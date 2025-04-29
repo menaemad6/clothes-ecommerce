@@ -4,7 +4,7 @@ import Layout from "@/components/layout/Layout";
 import ModernCard from "@/components/ui/modern-card";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShoppingBag, MapPin, Package, CreditCard, CalendarDays, TruckIcon, User, Mail, Phone } from "lucide-react";
+import { ArrowLeft, ShoppingBag, MapPin, Package, CreditCard, CalendarDays, TruckIcon, User, Mail, Phone, Paintbrush, Ruler } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getOrderById, getOrderItemsWithProducts } from "@/integrations/supabase/orders.service";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,52 @@ const normalizeStatus = (status: string): string => {
   return lowercaseStatus;
 };
 
+// Format array values to display as comma-separated strings
+const formatArrayValue = (value: string | string[] | null): string => {
+  if (!value) return '';
+  
+  // If it's already an array, join it
+  if (Array.isArray(value)) return value.join(', ');
+  
+  // If it's a string that looks like JSON array, try to parse it
+  if (typeof value === 'string') {
+    // Clean up the string in case it has extra quotes or escaped characters
+    const cleanedValue = value
+      .replace(/^"/, '')
+      .replace(/"$/, '')
+      .replace(/\\"/g, '"')
+      .trim();
+    
+    // Try to parse as JSON if it looks like an array
+    if ((cleanedValue.startsWith('[') && cleanedValue.endsWith(']')) ||
+        (cleanedValue.includes(',') && !cleanedValue.includes(':'))) {
+      try {
+        // If it looks like a JSON array
+        if (cleanedValue.startsWith('[') && cleanedValue.endsWith(']')) {
+          const parsedArray = JSON.parse(cleanedValue);
+          if (Array.isArray(parsedArray)) {
+            return parsedArray.join(', ');
+          }
+        } 
+        // If it's a comma-separated string but not JSON formatted
+        else if (cleanedValue.includes(',')) {
+          return cleanedValue;
+        }
+      } catch (e) {
+        // If parsing fails, treat as a comma-separated string
+        if (cleanedValue.includes(',')) {
+          return cleanedValue;
+        }
+        // Just return the original string
+        return value;
+      }
+    }
+  }
+  
+  // Otherwise, return the string as is
+  return value;
+};
+
 const getStatusColor = (status: string) => {
   const normalizedStatus = normalizeStatus(status);
   switch (normalizedStatus) {
@@ -49,17 +95,32 @@ const getStatusColor = (status: string) => {
 const StatusBadge = ({ status }: { status: string }) => {
   const normalizedStatus = normalizeStatus(status);
   
+  let badgeClass = '';
+  
+  switch (normalizedStatus) {
+    case 'delivered':
+      badgeClass = 'border-green-200 bg-green-50 text-green-700';
+      break;
+    case 'processing':
+      badgeClass = 'border-blue-200 bg-blue-50 text-blue-700';
+      break;
+    case 'shipped':
+      badgeClass = 'border-purple-200 bg-purple-50 text-purple-700';
+      break;
+    case 'pending':
+      badgeClass = 'border-yellow-200 bg-yellow-50 text-yellow-700';
+      break;
+    case 'cancelled':
+      badgeClass = 'border-red-200 bg-red-50 text-red-700';
+      break;
+    default:
+      badgeClass = 'border-gray-200 bg-gray-50 text-gray-700';
+  }
+  
   return (
     <Badge 
       variant="outline" 
-      className={`capitalize border px-5 py-2 flex items-center gap-2 text-base font-medium ${
-        normalizedStatus === 'delivered' ? 'border-green-200 bg-green-50 text-green-700' :
-        normalizedStatus === 'processing' ? 'border-blue-200 bg-blue-50 text-blue-700' :
-        normalizedStatus === 'shipped' ? 'border-purple-200 bg-purple-50 text-purple-700' :
-        normalizedStatus === 'pending' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' :
-        normalizedStatus === 'cancelled' ? 'border-red-200 bg-red-50 text-red-700' :
-        'border-gray-200 bg-gray-50 text-gray-700'
-      }`}
+      className={`capitalize border px-5 py-2 flex items-center gap-2 text-base font-medium ${badgeClass}`}
     >
       <span 
         className={`h-3 w-3 rounded-full ${getStatusColor(status)}`}
@@ -211,7 +272,7 @@ const OrderDetail = () => {
                     </div>
                     {order && <StatusBadge status={order.status} />}
                   </div>
-                }
+                } as any
               >
                 {order && (
                   <>
@@ -329,6 +390,34 @@ const OrderDetail = () => {
                                       </Link>
                                       <div className="text-sm text-muted-foreground dark:text-muted-foreground/90 mt-1">
                                         {item.products.unit && `Per ${item.products.unit}`}
+                                        
+                                        {/* Display color and size if available */}
+                                        {(item.selected_color || item.selected_size) && (
+                                          <div className="flex flex-wrap gap-2 mt-1">
+                                            {item.selected_size && (
+                                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted/50">
+                                                <Ruler className="h-3 w-3 mr-1 text-gray-500" />
+                                                {formatArrayValue(item.selected_size)}
+                                              </span>
+                                            )}
+                                            {item.selected_color && (
+                                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted/50">
+                                                <Paintbrush className="h-3 w-3 mr-1 text-gray-500" />
+                                                <span 
+                                                  className="w-2 h-2 rounded-full mr-1 border border-gray-300"
+                                                  style={{ 
+                                                    backgroundColor: 
+                                                      ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                                        .includes(formatArrayValue(item.selected_color).split(',')[0].trim().toLowerCase()) 
+                                                        ? formatArrayValue(item.selected_color).split(',')[0].trim().toLowerCase()
+                                                        : '#888' 
+                                                  }}
+                                                ></span>
+                                                {formatArrayValue(item.selected_color)}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     </>
                                   ) : (

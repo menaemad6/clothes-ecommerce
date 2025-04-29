@@ -718,6 +718,32 @@ const OrdersPage = () => {
                                   <p className="text-xs px-2 py-0.5 bg-amber-100/50 dark:bg-amber-900/30 rounded-full">Qty: {item.quantity}</p>
                                   <p className="text-xs text-muted-foreground">${parseFloat(item.price_at_time).toFixed(2)} each</p>
                                 </div>
+                                
+                                {/* Display selected color and size if available */}
+                                {(item.selected_color || item.selected_size) && (
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {item.selected_size && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-amber-100/50 dark:bg-amber-900/30 rounded-full">
+                                        Size: {item.selected_size}
+                                      </span>
+                                    )}
+                                    {item.selected_color && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-amber-100/50 dark:bg-amber-900/30 rounded-full flex items-center">
+                                        <span 
+                                          className="w-2 h-2 rounded-full mr-1"
+                                          style={{ 
+                                            backgroundColor: 
+                                              ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                                .includes(item.selected_color.toLowerCase()) 
+                                                ? item.selected_color.toLowerCase()
+                                                : '#888' 
+                                          }}
+                                        ></span>
+                                        {item.selected_color}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <p className="font-semibold text-amber-900 dark:text-amber-200">${(parseFloat(item.price_at_time) * item.quantity).toFixed(2)}</p>

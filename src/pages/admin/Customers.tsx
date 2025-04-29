@@ -61,6 +61,8 @@ interface OrderItemDB {
   id: string;
   quantity: number;
   price_at_time: number;
+  selected_color?: string | null;
+  selected_size?: string | null;
   product: {
     id: string;
     name: string;
@@ -81,6 +83,8 @@ interface OrderItem {
   id: string;
   quantity: number;
   price: number;
+  selected_color?: string | null;
+  selected_size?: string | null;
   product: {
     id: string;
     name: string;
@@ -263,6 +267,8 @@ const CustomersPage = () => {
           id: string;
           quantity: number;
           price_at_time: number;
+          selected_color?: string | null;
+          selected_size?: string | null;
           product: {
             id: string;
             name: string;
@@ -293,6 +299,8 @@ const CustomersPage = () => {
             id,
             quantity,
             price_at_time,
+            selected_color,
+            selected_size,
             product:products!order_items_product_id_fkey(
               id,
               name,
@@ -316,6 +324,8 @@ const CustomersPage = () => {
         id: item.id,
         quantity: item.quantity,
         price: item.price_at_time,
+        selected_color: item.selected_color,
+        selected_size: item.selected_size,
         product: item.product
       }));
 
@@ -830,6 +840,7 @@ const CustomersPage = () => {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Product</TableHead>
+                              <TableHead>Variants</TableHead>
                               <TableHead className="text-right">Quantity</TableHead>
                               <TableHead className="text-right">Price</TableHead>
                               <TableHead className="text-right">Total</TableHead>
@@ -850,6 +861,40 @@ const CustomersPage = () => {
                                     <div>
                                       <p className="font-medium">{item.product.name}</p>
                                     </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    {(item.selected_color || item.selected_size) ? (
+                                      <>
+                                        {item.selected_color && (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-xs text-muted-foreground">Color:</span>
+                                            <div className="flex items-center">
+                                              <span 
+                                                className="w-3 h-3 rounded-full mr-1"
+                                                style={{ 
+                                                  backgroundColor: 
+                                                    ['black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'brown', 'gray']
+                                                      .includes(item.selected_color.toLowerCase()) 
+                                                      ? item.selected_color.toLowerCase()
+                                                      : '#888' 
+                                                }}
+                                              ></span>
+                                              <span className="text-xs font-medium">{item.selected_color}</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {item.selected_size && (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-xs text-muted-foreground">Size:</span>
+                                            <span className="text-xs font-medium">{item.selected_size}</span>
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">No variants</span>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right">{item.quantity}</TableCell>

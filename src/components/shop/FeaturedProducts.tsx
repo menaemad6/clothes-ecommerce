@@ -24,7 +24,7 @@ interface FeaturedProductsProps {
 
 const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {
   const featuredProducts = useMemo(() => {
-    return products.filter(product => product.featured).slice(0, 8);
+    return products.filter(product => product.featured === true).slice(0, 8);
   }, [products]);
 
   if (featuredProducts.length === 0) {

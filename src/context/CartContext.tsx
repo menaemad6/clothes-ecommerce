@@ -7,6 +7,8 @@ import { ensureProductTypeCompatibility, mapSupabaseProductToAppProduct } from "
 export interface CartItem {
   product: Product | SupabaseProduct;
   quantity: number;
+  selectedColor?: string;
+  selectedSize?: string;
 }
 
 export interface CartContextProps {
@@ -14,11 +16,11 @@ export interface CartContextProps {
   cart: CartItem[];
   cartItemsCount: number;
   cartTotal: number;
-  addItem: (product: Product | SupabaseProduct, quantity?: number) => void;
-  addToCart: (product: Product | SupabaseProduct, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (product: Product | SupabaseProduct, quantity?: number, selectedColor?: string, selectedSize?: string) => void;
+  addToCart: (product: Product | SupabaseProduct, quantity?: number, selectedColor?: string, selectedSize?: string) => void;
+  removeItem: (productId: string, selectedColor?: string, selectedSize?: string) => void;
+  removeFromCart: (productId: string, selectedColor?: string, selectedSize?: string) => void;
+  updateQuantity: (productId: string, quantity: number, selectedColor?: string, selectedSize?: string) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemQuantity: (productId: string) => number;
@@ -102,7 +104,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
             created_at: item.product.created_at,
             updated_at: item.product.updated_at,
           },
-          quantity: item.quantity
+          quantity: item.quantity,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize
         }));
         
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartToSave));
@@ -118,12 +122,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [items]);
 
-  const addItem = (product: Product | SupabaseProduct, quantity = 1) => {
+  const addItem = (product: Product | SupabaseProduct, quantity = 1, selectedColor?: string, selectedSize?: string) => {
     const normalizedProduct = mapSupabaseProductToAppProduct(product);
     
     setItems((prevItems) => {
+      // Create a unique identifier including color and size to distinguish variations
+      const productVariantId = `${normalizedProduct.id}-${selectedColor || ''}-${selectedSize || ''}`;
+      
+      // Find item with same id AND same color/size combination
       const existingItemIndex = prevItems.findIndex(
-        (item) => item.product.id === normalizedProduct.id
+        (item) => item.product.id === normalizedProduct.id && 
+                 item.selectedColor === selectedColor && 
+                 item.selectedSize === selectedSize
       );
 
       if (existingItemIndex >= 0) {
@@ -145,41 +155,56 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
           description: `${normalizedProduct.name} added to your cart`,
         });
         
-        return [...prevItems, { product: normalizedProduct, quantity }];
+        return [...prevItems, { 
+          product: normalizedProduct, 
+          quantity,
+          selectedColor,
+          selectedSize
+        }];
       }
     });
   };
 
   const addToCart = addItem;
 
-  const removeItem = (productId: string) => {
+  const removeItem = (productId: string, selectedColor?: string, selectedSize?: string) => {
     setItems((prevItems) => {
-      const itemToRemove = prevItems.find(
-        (item) => item.product.id === productId
+      // Find item with the exact criteria (id, color, size)
+      const itemToRemoveIndex = prevItems.findIndex(
+        (item) => item.product.id === productId && 
+                 item.selectedColor === selectedColor && 
+                 item.selectedSize === selectedSize
       );
       
-      if (itemToRemove) {
+      if (itemToRemoveIndex >= 0) {
         toast({
           title: "Item removed",
-          description: `${itemToRemove.product.name} removed from your cart`,
+          description: `${prevItems[itemToRemoveIndex].product.name} removed from your cart`,
         });
+        
+        // Create a new array without the specific item variant
+        return prevItems.filter((_, index) => index !== itemToRemoveIndex);
       }
       
-      return prevItems.filter((item) => item.product.id !== productId);
+      return prevItems;
     });
   };
 
   const removeFromCart = removeItem;
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number, selectedColor?: string, selectedSize?: string) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(productId, selectedColor, selectedSize);
       return;
     }
     
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.product.id === productId && 
+        item.selectedColor === selectedColor && 
+        item.selectedSize === selectedSize 
+          ? { ...item, quantity } 
+          : item
       )
     );
   };

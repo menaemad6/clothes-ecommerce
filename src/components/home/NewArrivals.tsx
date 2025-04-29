@@ -24,9 +24,7 @@ interface NewArrivalsProps {
 
 const NewArrivals: React.FC<NewArrivalsProps> = ({ products }) => {
   const newProducts = useMemo(() => {
-    return products.filter(product => 'is_new' in product 
-      ? product.is_new 
-      : (product as any).isNew).slice(0, 8);
+    return products.filter(product => product.is_new === true).slice(0, 8);
   }, [products]);
 
   if (newProducts.length === 0) {

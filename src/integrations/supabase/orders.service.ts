@@ -37,7 +37,9 @@ export async function getOrdersWithItems(userId?: string, forAdminView: boolean 
           id, 
           quantity, 
           price_at_time,
-          product_id
+          product_id,
+          selected_color,
+          selected_size
         )
       `);
       
@@ -133,7 +135,9 @@ export async function getOrderItemsWithProducts(orderId: string) {
         order_id,
         product_id,
         quantity,
-        price_at_time
+        price_at_time,
+        selected_color,
+        selected_size
       `)
       .eq('order_id', orderId);
     
@@ -292,6 +296,8 @@ export async function createOrder(orderData: {
     product_id: string;
     quantity: number;
     price_at_time: number;
+    selected_color?: string;
+    selected_size?: string;
   }[];
 }) {
   try {
@@ -335,7 +341,9 @@ export async function createOrder(orderData: {
       order_id: order.id,
       product_id: item.product_id,
       quantity: item.quantity,
-      price_at_time: item.price_at_time
+      price_at_time: item.price_at_time,
+      selected_color: item.selected_color,
+      selected_size: item.selected_size
     }));
     
     const { error: itemsError } = await supabase

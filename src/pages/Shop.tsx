@@ -70,6 +70,11 @@ const Shop = () => {
   const [openAccordion, setOpenAccordion] = useState<string>("categories");
   const searchInputRef = useRef<HTMLInputElement>(null);
   
+  // Add clothing-specific filters
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedGender, setSelectedGender] = useState<string>("");
+  
   const toggleFilters = () => setShowFilters(!showFilters);
 
   useEffect(() => {
@@ -153,6 +158,21 @@ const Shop = () => {
     if (showDiscounted) {
       result = result.filter(product => product.discount > 0);
     }
+
+    // Size filter
+    if (selectedSize) {
+      result = result.filter(product => product.size === selectedSize);
+    }
+
+    // Color filter
+    if (selectedColor) {
+      result = result.filter(product => product.color === selectedColor);
+    }
+
+    // Gender filter
+    if (selectedGender) {
+      result = result.filter(product => product.gender === selectedGender);
+    }
     
     // Sorting
     switch (selectedSort) {
@@ -183,7 +203,7 @@ const Shop = () => {
       searchParams.delete("category");
     }
     setSearchParams(searchParams);
-  }, [products, selectedCategory, selectedSort, priceRange, debouncedSearchQuery, showFeatured, showNew, showDiscounted, searchParams, setSearchParams]);
+  }, [products, selectedCategory, selectedSort, priceRange, debouncedSearchQuery, showFeatured, showNew, showDiscounted, searchParams, setSearchParams, selectedSize, selectedColor, selectedGender]);
 
   const clearFilters = () => {
     setSelectedCategory("");
@@ -199,6 +219,9 @@ const Shop = () => {
     setShowFeatured(false);
     setShowNew(false);
     setShowDiscounted(false);
+    setSelectedSize("");
+    setSelectedColor("");
+    setSelectedGender("");
   };
 
   const handlePriceInputChange = (type: 'min' | 'max', value: string) => {
@@ -280,44 +303,116 @@ const Shop = () => {
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="min-price" className="text-xs text-muted-foreground">Min Price</Label>
-                  <Input
-                    id="min-price"
-                    type="number"
-                    value={minPriceInput}
-                    onChange={(e) => handlePriceInputChange('min', e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label htmlFor="max-price" className="text-xs text-muted-foreground">Max Price</Label>
-                  <Input
-                    id="max-price"
-                    type="number"
-                    value={maxPriceInput}
-                    onChange={(e) => handlePriceInputChange('max', e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-              </div>
               <Slider
+                value={priceRange}
                 min={Math.min(...products.map(p => p.price))}
                 max={Math.max(...products.map(p => p.price))}
                 step={1}
-                value={priceRange}
                 onValueChange={handlePriceRangeChange}
+                formatLabel={formatPrice}
               />
+              <div className="flex gap-2">
+                <div className="space-y-1.5 flex-1">
+                  <Label htmlFor="minPrice">Min</Label>
+                  <Input
+                    id="minPrice"
+                    value={minPriceInput}
+                    onChange={(e) => handlePriceInputChange('min', e.target.value)}
+                    placeholder="Min"
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <Label htmlFor="maxPrice">Max</Label>
+                  <Input
+                    id="maxPrice"
+                    value={maxPriceInput}
+                    onChange={(e) => handlePriceInputChange('max', e.target.value)}
+                    placeholder="Max"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="filters" className="border-b">
+        <AccordionItem value="clothing" className="border-b">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4" />
-              <span>Product Filters</span>
+              <ShoppingBag className="h-4 w-4" />
+              <span>Clothing Options</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4">
+              {/* Size filter */}
+              <div className="space-y-1.5">
+                <Label>Size</Label>
+                <Select value={selectedSize} onValueChange={setSelectedSize}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Sizes</SelectItem>
+                    <SelectItem value="XS">XS</SelectItem>
+                    <SelectItem value="S">S</SelectItem>
+                    <SelectItem value="M">M</SelectItem>
+                    <SelectItem value="L">L</SelectItem>
+                    <SelectItem value="XL">XL</SelectItem>
+                    <SelectItem value="XXL">XXL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Color filter */}
+              <div className="space-y-1.5">
+                <Label>Color</Label>
+                <Select value={selectedColor} onValueChange={setSelectedColor}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Colors</SelectItem>
+                    <SelectItem value="Black">Black</SelectItem>
+                    <SelectItem value="White">White</SelectItem>
+                    <SelectItem value="Red">Red</SelectItem>
+                    <SelectItem value="Blue">Blue</SelectItem>
+                    <SelectItem value="Green">Green</SelectItem>
+                    <SelectItem value="Yellow">Yellow</SelectItem>
+                    <SelectItem value="Purple">Purple</SelectItem>
+                    <SelectItem value="Pink">Pink</SelectItem>
+                    <SelectItem value="Brown">Brown</SelectItem>
+                    <SelectItem value="Gray">Gray</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Gender filter */}
+              <div className="space-y-1.5">
+                <Label>Gender</Label>
+                <Select value={selectedGender} onValueChange={setSelectedGender}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Genders</SelectItem>
+                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="women">Women</SelectItem>
+                    <SelectItem value="kids">Kids</SelectItem>
+                    <SelectItem value="unisex">Unisex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="status" className="border-b">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              <span>Status</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
