@@ -1,4 +1,4 @@
-# <img src="https://img.icons8.com/color/48/000000/shopping-bag.png" width="32" height="32"/> HoodTi
+# <img src="https://img.icons8.com/color/48/000000/shopping-bag.png" width="32" height="32"/> Ecommerce Template 
 
 > **Modern E-commerce Platform for Streetwear & Fashion**
 
