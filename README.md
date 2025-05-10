@@ -1,69 +1,182 @@
-# Welcome to your Lovable project
+# <img src="https://img.icons8.com/color/48/000000/shopping-bag.png" width="32" height="32"/> HoodTi
 
-## Project info
+> **Modern E-commerce Platform for Streetwear & Fashion**
 
-**URL**: https://lovable.dev/projects/9e71224c-6f6f-484f-a8a1-481f8a914ef0
+[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite)](https://vitejs.dev/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-2.49-3ECF8E?logo=supabase)](https://supabase.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## How can I edit this code?
+![App Demo](https://placehold.co/800x400/74a180/FFFFFF/png?text=E-Commerce+Platform&font=montserrat)
 
-There are several ways of editing your application.
+## 🛍️ Overview
 
-**Use Lovable**
+This is a full-featured e-commerce platform built with modern web technologies. It offers a seamless shopping experience with a responsive user interface, secure authentication, robust product management, intuitive shopping cart functionality, streamlined order processing, and a comprehensive admin dashboard for store management.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9e71224c-6f6f-484f-a8a1-481f8a914ef0) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🌟 Key Features
 
-**Use your preferred IDE**
+- 🔐 **User Authentication & Authorization** - Secure login, registration, and role-based access control
+- 🏬 **Product Catalog** - Browse products with filtering, sorting, and search capabilities
+- 🛒 **Shopping Cart** - Add products, adjust quantities, and apply promotions
+- 💳 **Checkout Process** - Streamlined checkout with delivery slot selection
+- 👤 **User Accounts** - Profile management, order history, saved addresses, and wishlist
+- 📊 **Admin Dashboard** - Complete store management including:
+  - 📦 Inventory management
+  - 📋 Order processing
+  - 👥 Customer management
+  - 📈 Analytics and reporting
+  - 🖋️ Content management
+  - 🕒 Delivery slot scheduling
+- 📱 **Responsive Design** - Optimized for all device sizes
+- 📧 **Email Notifications** - Order confirmations and status updates
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🔧 Tech Stack
 
-Follow these steps:
+### Frontend
+- <img src="https://img.icons8.com/color/48/000000/react-native.png" width="18" height="18"/> **React** - JavaScript library for building user interfaces
+- <img src="https://img.icons8.com/color/48/000000/typescript.png" width="18" height="18"/> **TypeScript** - Typed JavaScript for better code quality
+- <img src="https://vitejs.dev/logo.svg" width="18" height="18"/> **Vite** - Next-generation frontend build tool
+- <img src="https://tailwindcss.com/favicons/favicon-32x32.png" width="18" height="18"/> **TailwindCSS** - Utility-first CSS framework
+- <img src="https://raw.githubusercontent.com/shadcn-ui/ui/main/apps/www/public/favicon-32x32.png" width="18" height="18"/> **Shadcn UI** - Accessible component system
+- <img src="https://reactrouter.com/favicon-light.png" width="18" height="18"/> **React Router** - Declarative routing for React
+- <img src="https://tanstack.com/favicon.ico" width="18" height="18"/> **Tanstack React Query** - Data fetching and state management
+- <img src="https://www.framer.com/images/favicon.png" width="18" height="18"/> **Framer Motion** - Animation library for React
+- <img src="https://react-hook-form.com/favicon.ico" width="18" height="18"/> **React Hook Form** - Form validation with Zod schema
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Backend & Database
+- <img src="https://supabase.com/favicon/favicon-32x32.png" width="18" height="18"/> **Supabase** - Open source Firebase alternative
+- <img src="https://www.postgresql.org/media/img/about/press/elephant.png" width="18" height="18"/> **PostgreSQL** - Advanced open source database
+- <img src="https://img.icons8.com/color/48/000000/api-settings.png" width="18" height="18"/> **RESTful API** - Standard interface for service communication
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Additional Tools
+- <img src="https://img.icons8.com/color/48/000000/email.png" width="18" height="18"/> **EmailJS** - Client-side email sending
+- <img src="https://recharts.org/favicon.ico" width="18" height="18"/> **Recharts** - Redefined chart library built with React
+- <img src="https://swiperjs.com/images/favicon.png" width="18" height="18"/> **Swiper** - Modern touch slider
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🚀 Getting Started
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### Prerequisites
+
+- Node.js 16.x or higher
+- Supabase account
+- EmailJS account (for email notifications)
+
+### Installation
+
+1️⃣ **Clone the repository:**
+```bash
+git clone https://github.com/yourusername/clothes-ecommerce.git
+cd clothes-ecommerce
 ```
 
-**Edit a file directly in GitHub**
+2️⃣ **Install dependencies:**
+```bash
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3️⃣ **Set up environment variables:**
 
-**Use GitHub Codespaces**
+Create a `.env` file in the root directory:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_EMAILJS_SERVICE_ID=your_emailjs_service_id
+VITE_EMAILJS_TEMPLATE_ID=your_emailjs_template_id
+VITE_EMAILJS_USER_ID=your_emailjs_user_id
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4️⃣ **Set up the database:**
 
-## What technologies are used for this project?
+Execute the SQL files in the root directory to set up the required tables and policies:
+- `create_profiles_table.sql`
+- `create_profile_trigger.sql`
+- `create_settings_table.sql`
+- `create_user_role_trigger.sql`
+- `profiles_rls_setup.sql`
+- `role_functions.sql`
+- `user_roles_rls_setup.sql`
 
-This project is built with .
+5️⃣ **Start the development server:**
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+6️⃣ **Build for production:**
+```bash
+npm run build
+# or
+yarn build
+```
 
-## How can I deploy this project?
+## 🔒 Authentication
 
-Simply open [Lovable](https://lovable.dev/projects/9e71224c-6f6f-484f-a8a1-481f8a914ef0) and click on Share -> Publish.
+<b>User Roles and Permissions</b>
 
-## I want to use a custom domain - is that possible?
+The application uses Supabase for authentication with the following roles:
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- **user**: Regular customers with access to shopping and order management
+- **admin**: Store administrators with access to the admin dashboard
+- **super_admin**: Full system access with additional privileges
+
+Each role has specific permissions implemented through Supabase Row Level Security (RLS).
+
+
+
+## 🔄 Development Workflow
+
+<details>
+<summary><b>Recommended workflow for contributors</b></summary>
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure your code follows the project's coding standards and includes appropriate tests.
+</details>
+
+## 📦 Project Structure
+
+<b>Key directories and files</b>
+
+```
+clothes-ecommerce/
+├── src/
+│   ├── components/       # Reusable UI components
+│   ├── pages/            # Application pages
+│   ├── integrations/     # External service integrations
+│   ├── context/          # React context providers
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utility functions and helpers
+│   ├── types/            # TypeScript type definitions
+│   ├── styles/           # Global styles
+│   ├── App.tsx           # Main application component
+│   └── main.tsx          # Application entry point
+├── public/               # Static assets
+├── *.sql                 # Database setup files
+├── tailwind.config.ts    # Tailwind configuration
+├── vite.config.ts        # Vite configuration
+└── package.json          # Project dependencies
+```
+
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+<p align="center">
+  <img src="https://img.icons8.com/color/48/000000/shopping-bag.png" width="24" height="24"/>
+  <br>
+  Made with ❤️ for the modern e-commerce experience
+</p> 
